@@ -204,10 +204,14 @@ function DailyLoopView({ data, setData, todayLog, setTodayLog, streak }) {
     setTodayLog(prev => ({ ...prev, [field]: value }));
   };
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState('');
+
   const setStartDate = () => {
-    const startDate = prompt('Enter your sobriety start date (YYYY-MM-DD):');
-    if (startDate) {
-      setData(prev => ({ ...prev, sobrietyStartDate: startDate }));
+    if (tempDate) {
+      setData(prev => ({ ...prev, sobrietyStartDate: tempDate }));
+      setShowDatePicker(false);
+      setTempDate('');
     }
   };
 
@@ -239,10 +243,35 @@ function DailyLoopView({ data, setData, todayLog, setTodayLog, streak }) {
           </div>
           <div className="text-4xl sm:text-5xl font-light mb-1">{streak}</div>
           <div className="text-xs sm:text-sm text-purple-300">days of clarity</div>
-          {!data.sobrietyStartDate && (
-            <button onClick={setStartDate} className="mt-2 sm:mt-3 text-xs text-purple-400 hover:text-purple-300 underline">
+          {!data.sobrietyStartDate && !showDatePicker && (
+            <button onClick={() => setShowDatePicker(true)} className="mt-2 sm:mt-3 text-xs text-purple-400 hover:text-purple-300 underline">
               Set start date
             </button>
+          )}
+          {showDatePicker && (
+            <div className="mt-3 space-y-2">
+              <input
+                type="date"
+                value={tempDate}
+                onChange={(e) => setTempDate(e.target.value)}
+                className="bg-black/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowDatePicker(false); setTempDate(''); }}
+                  className="flex-1 bg-white/10 hover:bg-white/20 py-1 rounded text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={setStartDate}
+                  disabled={!tempDate}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 py-1 rounded text-xs"
+                >
+                  Set Date
+                </button>
+              </div>
+            </div>
           )}
           <button
             onClick={() => setData(prev => ({ ...prev, sobrietyTracking: false }))}
@@ -319,23 +348,32 @@ function DailyLoopView({ data, setData, todayLog, setTodayLog, streak }) {
       {/* Checkboxes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         {[
-          { key: 'drankToday', label: 'Drank today', color: 'red-500' },
-          { key: 'feltTempted', label: 'Felt tempted', color: 'amber-500' },
-          { key: 'gotOutside', label: 'Got outside', color: 'emerald-500' },
-          { key: 'movedBody', label: 'Moved my body', color: 'blue-500' }
+          { key: 'drankToday', label: 'Drank today', bgColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', checkBg: 'rgba(239, 68, 68, 0.5)' },
+          { key: 'feltTempted', label: 'Felt tempted', bgColor: 'rgba(245, 158, 11, 0.2)', borderColor: '#f59e0b', checkBg: 'rgba(245, 158, 11, 0.5)' },
+          { key: 'gotOutside', label: 'Got outside', bgColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', checkBg: 'rgba(16, 185, 129, 0.5)' },
+          { key: 'movedBody', label: 'Moved my body', bgColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', checkBg: 'rgba(59, 130, 246, 0.5)' }
         ].map(item => (
           <button
             key={item.key}
             onClick={() => updateLog(item.key, !todayLog[item.key])}
-            className={`flex items-center gap-2 p-2 sm:p-3 rounded-lg transition-all border-2 ${
-              todayLog[item.key]
-                ? `bg-${item.color}/20 border-${item.color}`
-                : 'bg-white/5 border-transparent hover:bg-white/10'
-            }`}
+            className="flex items-center gap-2 p-2 sm:p-3 rounded-lg transition-all border-2"
+            style={todayLog[item.key] ? {
+              backgroundColor: item.bgColor,
+              borderColor: item.borderColor
+            } : {
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderColor: 'transparent'
+            }}
           >
-            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center ${
-              todayLog[item.key] ? `border-${item.color} bg-${item.color}/50` : 'border-gray-500'
-            }`}>
+            <div
+              className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center"
+              style={todayLog[item.key] ? {
+                borderColor: item.borderColor,
+                backgroundColor: item.checkBg
+              } : {
+                borderColor: '#6b7280'
+              }}
+            >
               {todayLog[item.key] && <Icons.Check className="w-2 h-2 sm:w-3 sm:h-3 text-white" />}
             </div>
             <span className="text-xs sm:text-sm">{item.label}</span>
@@ -416,10 +454,10 @@ function FocusView({ data, setData }) {
   const intervalRef = useRef(null);
 
   const presets = [
-    { name: 'Stretch', duration: 10, icon: '🧘', color: 'emerald' },
-    { name: 'Read', duration: 45, icon: '📖', color: 'blue' },
-    { name: 'Deep Work', duration: 90, icon: '💻', color: 'purple' },
-    { name: 'Quick Break', duration: 5, icon: '☕', color: 'amber' }
+    { name: 'Stretch', duration: 10, icon: '🧘', bgColor: 'rgba(16, 185, 129, 0.2)', borderColor: 'rgba(16, 185, 129, 0.5)', textColor: '#10b981' },
+    { name: 'Read', duration: 45, icon: '📖', bgColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)', textColor: '#3b82f6' },
+    { name: 'Deep Work', duration: 90, icon: '💻', bgColor: 'rgba(147, 51, 234, 0.2)', borderColor: 'rgba(147, 51, 234, 0.5)', textColor: '#9333ea' },
+    { name: 'Quick Break', duration: 5, icon: '☕', bgColor: 'rgba(245, 158, 11, 0.2)', borderColor: 'rgba(245, 158, 11, 0.5)', textColor: '#f59e0b' }
   ];
 
   const startTimer = (preset) => {
@@ -495,7 +533,13 @@ function FocusView({ data, setData }) {
               <button
                 key={preset.name}
                 onClick={() => startTimer(preset)}
-                className={`bg-${preset.color}-500/20 hover:bg-${preset.color}-500/30 border-2 border-${preset.color}-500/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all hover:scale-105 shadow-lg`}
+                className="rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all hover:scale-105 shadow-lg border-2"
+                style={{
+                  backgroundColor: preset.bgColor,
+                  borderColor: preset.borderColor
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = preset.bgColor.replace('0.2', '0.3')}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = preset.bgColor}
               >
                 <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">{preset.icon}</div>
                 <div className="font-medium text-sm sm:text-base mb-1">{preset.name}</div>
@@ -536,47 +580,47 @@ function FocusView({ data, setData }) {
                 cx="48"
                 cy="48"
                 r="42"
-                stroke="currentColor"
+                stroke="rgba(255, 255, 255, 0.1)"
                 strokeWidth="6"
                 fill="none"
-                className="text-white/10 sm:hidden"
+                className="sm:hidden"
               />
               <circle
                 cx="48"
                 cy="48"
                 r="42"
-                stroke="currentColor"
+                stroke={activeTimer.textColor}
                 strokeWidth="6"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 42}`}
                 strokeDashoffset={`${2 * Math.PI * 42 * (1 - timeLeft / (activeTimer.duration * 60))}`}
-                className={`text-${activeTimer.color}-500 transition-all duration-1000 sm:hidden`}
+                className="transition-all duration-1000 sm:hidden"
                 strokeLinecap="round"
               />
               <circle
                 cx="64"
                 cy="64"
                 r="56"
-                stroke="currentColor"
+                stroke="rgba(255, 255, 255, 0.1)"
                 strokeWidth="8"
                 fill="none"
-                className="text-white/10 hidden sm:block"
+                className="hidden sm:block"
               />
               <circle
                 cx="64"
                 cy="64"
                 r="56"
-                stroke="currentColor"
+                stroke={activeTimer.textColor}
                 strokeWidth="8"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 56}`}
                 strokeDashoffset={`${2 * Math.PI * 56 * (1 - timeLeft / (activeTimer.duration * 60))}`}
-                className={`text-${activeTimer.color}-500 transition-all duration-1000 hidden sm:block`}
+                className="transition-all duration-1000 hidden sm:block"
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <Icons.Heart className={`w-6 h-6 sm:w-8 sm:h-8 text-${activeTimer.color}-500 ${isPaused ? '' : 'animate-pulse'}`} />
+              <Icons.Heart className={`w-6 h-6 sm:w-8 sm:h-8 ${isPaused ? '' : 'animate-pulse'}`} style={{ color: activeTimer.textColor }} />
             </div>
           </div>
 
@@ -707,15 +751,21 @@ function UrgeSurfView({ data, setData }) {
               <Icons.Wind className="absolute inset-0 m-auto w-10 h-10 sm:w-12 sm:h-12 text-teal-400" />
             </div>
             <div className="text-3xl sm:text-4xl font-light">{breathCount} / 3</div>
-            <button
-              onClick={() => {
-                if (breathCount < 3) setBreathCount(breathCount + 1);
-                if (breathCount === 2) setTimeout(() => setStep(3), 500);
-              }}
-              className="bg-teal-600 hover:bg-teal-700 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
-            >
-              {breathCount < 3 ? 'Breathe In... Out...' : 'Continue'}
-            </button>
+            {breathCount < 3 ? (
+              <button
+                onClick={() => setBreathCount(breathCount + 1)}
+                className="bg-teal-600 hover:bg-teal-700 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
+              >
+                Breathe In... Out...
+              </button>
+            ) : (
+              <button
+                onClick={() => setStep(3)}
+                className="bg-emerald-600 hover:bg-emerald-700 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
+              >
+                Continue
+              </button>
+            )}
           </div>
         )}
 
@@ -858,6 +908,7 @@ function MusicView({ data, setData }) {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingError, setRecordingError] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingIntervalRef = useRef(null);
@@ -918,9 +969,17 @@ function MusicView({ data, setData }) {
 
   // Audio Recording Functions
   const startRecording = async () => {
+    setRecordingError(null);
+
+    // Check if browser supports audio recording
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setRecordingError('Audio recording is not supported in your browser.');
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -934,15 +993,20 @@ function MusicView({ data, setData }) {
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setAudioBlob(blob);
-        
+
         // Clean up audio URL if it exists
         if (audioUrlRef.current) {
           URL.revokeObjectURL(audioUrlRef.current);
         }
         audioUrlRef.current = URL.createObjectURL(blob);
-        
+
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.onerror = (event) => {
+        setRecordingError('Recording error occurred. Please try again.');
+        setIsRecording(false);
       };
 
       mediaRecorder.start();
@@ -956,7 +1020,13 @@ function MusicView({ data, setData }) {
 
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Unable to access microphone. Please check permissions.');
+      if (error.name === 'NotAllowedError') {
+        setRecordingError('Microphone access denied. Please allow microphone permissions.');
+      } else if (error.name === 'NotFoundError') {
+        setRecordingError('No microphone found. Please connect a microphone.');
+      } else {
+        setRecordingError('Unable to access microphone. Please try again.');
+      }
     }
   };
 
@@ -1087,6 +1157,12 @@ function MusicView({ data, setData }) {
             <label className="text-xs sm:text-sm text-purple-300 mb-3 block">
               Voice Memo
             </label>
+
+            {recordingError && (
+              <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300">
+                {recordingError}
+              </div>
+            )}
 
             {!audioBlob ? (
               <div className="space-y-3 sm:space-y-4">
@@ -1304,26 +1380,34 @@ function AnchorMomentsView({ data, setData }) {
       )}
 
       {/* Display Moments */}
-      <div className="space-y-3">
-        {data.anchorMoments.slice().reverse().map((moment, idx) => (
-          <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-3">
-            {moment.photo && (
-              <img src={moment.photo} alt="Anchor moment" className="rounded-lg w-full max-h-64 object-cover" />
-            )}
-            {moment.title && <h3 className="font-medium text-lg">{moment.title}</h3>}
-            {moment.note && <p className="text-sm text-gray-300">{moment.note}</p>}
-            <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>{new Date(moment.timestamp).toLocaleDateString()}</span>
-              <button
-                onClick={() => deleteMoment(data.anchorMoments.length - 1 - idx)}
-                className="text-red-400 hover:text-red-300"
-              >
-                Delete
-              </button>
+      {data.anchorMoments.length === 0 ? (
+        <div className="text-center py-12 px-4 bg-white/5 rounded-xl">
+          <Icons.Anchor className="w-12 h-12 mx-auto mb-4 text-purple-400 opacity-50" />
+          <p className="text-gray-400 text-sm">No anchor moments yet.</p>
+          <p className="text-gray-500 text-xs mt-2">Capture memories that ground you.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.anchorMoments.slice().reverse().map((moment, idx) => (
+            <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-3">
+              {moment.photo && (
+                <img src={moment.photo} alt="Anchor moment" className="rounded-lg w-full max-h-64 object-cover" />
+              )}
+              {moment.title && <h3 className="font-medium text-lg">{moment.title}</h3>}
+              {moment.note && <p className="text-sm text-gray-300">{moment.note}</p>}
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{new Date(moment.timestamp).toLocaleDateString()}</span>
+                <button
+                  onClick={() => deleteMoment(data.anchorMoments.length - 1 - idx)}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1429,48 +1513,56 @@ function ConnectionsView({ data, setData }) {
       )}
 
       {/* Display Connections */}
-      <div className="space-y-3">
-        {data.connections.map((person, idx) => {
-          const days = daysSinceContact(person.lastContact);
-          return (
-            <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-medium text-lg">{person.name}</h3>
-                  {person.phone && (
-                    <a href={`tel:${person.phone}`} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                      <Icons.Phone className="w-3 h-3" />
-                      {person.phone}
-                    </a>
+      {data.connections.length === 0 ? (
+        <div className="text-center py-12 px-4 bg-white/5 rounded-xl">
+          <Icons.Users className="w-12 h-12 mx-auto mb-4 text-blue-400 opacity-50" />
+          <p className="text-gray-400 text-sm">No connections added yet.</p>
+          <p className="text-gray-500 text-xs mt-2">Add people who matter to you.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.connections.map((person, idx) => {
+            const days = daysSinceContact(person.lastContact);
+            return (
+              <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-medium text-lg">{person.name}</h3>
+                    {person.phone && (
+                      <a href={`tel:${person.phone}`} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <Icons.Phone className="w-3 h-3" />
+                        {person.phone}
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => deleteConnection(idx)}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                {person.note && <p className="text-sm text-gray-300">{person.note}</p>}
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => markContacted(idx)}
+                    className="flex-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 py-2 rounded-lg text-xs transition-all"
+                  >
+                    Mark as Contacted
+                  </button>
+                  {days !== null && (
+                    <span className="text-xs text-gray-400">
+                      {days === 0 ? 'Today' : `${days}d ago`}
+                    </span>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteConnection(idx)}
-                  className="text-xs text-red-400 hover:text-red-300"
-                >
-                  Remove
-                </button>
               </div>
-
-              {person.note && <p className="text-sm text-gray-300">{person.note}</p>}
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  onClick={() => markContacted(idx)}
-                  className="flex-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 py-2 rounded-lg text-xs transition-all"
-                >
-                  Mark as Contacted
-                </button>
-                {days !== null && (
-                  <span className="text-xs text-gray-400">
-                    {days === 0 ? 'Today' : `${days}d ago`}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1491,17 +1583,23 @@ function InsightsView({ data }) {
   const last30Days = getLast30Days();
   const logsWithData = last30Days.filter(log => log && log.mood);
 
-  // Calculate averages
-  const avgSleep = logsWithData.filter(l => l.sleep).reduce((sum, l) => sum + l.sleep, 0) / logsWithData.filter(l => l.sleep).length || 0;
+  // Calculate averages with proper null checks
+  const sleepLogs = logsWithData.filter(l => l.sleep && l.sleep > 0);
+  const avgSleep = sleepLogs.length > 0
+    ? sleepLogs.reduce((sum, l) => sum + l.sleep, 0) / sleepLogs.length
+    : 0;
+
   const moodCounts = logsWithData.reduce((acc, log) => {
     acc[log.mood] = (acc[log.mood] || 0) + 1;
     return acc;
   }, {});
-  const mostCommonMood = Object.keys(moodCounts).sort((a, b) => moodCounts[b] - moodCounts[a])[0];
+  const mostCommonMood = Object.keys(moodCounts).length > 0
+    ? Object.keys(moodCounts).sort((a, b) => moodCounts[b] - moodCounts[a])[0]
+    : null;
 
   const outsideDays = logsWithData.filter(l => l.gotOutside).length;
   const exerciseDays = logsWithData.filter(l => l.movedBody).length;
-  const gratitudeDays = logsWithData.filter(l => l.gratitude).length;
+  const gratitudeDays = logsWithData.filter(l => l.gratitude && l.gratitude.trim()).length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -1524,12 +1622,14 @@ function InsightsView({ data }) {
             </div>
 
             <div className="bg-gradient-to-br from-blue-500/20 to-teal-500/20 rounded-xl p-4 border border-blue-500/30 text-center">
-              <div className="text-3xl font-light mb-1">{avgSleep.toFixed(1)}</div>
+              <div className="text-3xl font-light mb-1">
+                {avgSleep > 0 ? avgSleep.toFixed(1) : '—'}
+              </div>
               <div className="text-xs text-gray-300">avg sleep (hrs)</div>
             </div>
 
             <div className="bg-gradient-to-br from-teal-500/20 to-emerald-500/20 rounded-xl p-4 border border-teal-500/30 text-center col-span-2 sm:col-span-1">
-              <div className="text-3xl mb-1">{moodEmojis[mostCommonMood] || '·'}</div>
+              <div className="text-3xl mb-1">{mostCommonMood ? moodEmojis[mostCommonMood] : '·'}</div>
               <div className="text-xs text-gray-300">common mood</div>
             </div>
           </div>
@@ -1544,7 +1644,7 @@ function InsightsView({ data }) {
                 <span className="text-emerald-400">{outsideDays} days</span>
               </div>
               <div className="w-full bg-black/30 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${(outsideDays / logsWithData.length) * 100}%` }} />
+                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: logsWithData.length > 0 ? `${(outsideDays / logsWithData.length) * 100}%` : '0%' }} />
               </div>
             </div>
 
@@ -1554,7 +1654,7 @@ function InsightsView({ data }) {
                 <span className="text-blue-400">{exerciseDays} days</span>
               </div>
               <div className="w-full bg-black/30 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(exerciseDays / logsWithData.length) * 100}%` }} />
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: logsWithData.length > 0 ? `${(exerciseDays / logsWithData.length) * 100}%` : '0%' }} />
               </div>
             </div>
 
@@ -1564,7 +1664,7 @@ function InsightsView({ data }) {
                 <span className="text-amber-400">{gratitudeDays} days</span>
               </div>
               <div className="w-full bg-black/30 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${(gratitudeDays / logsWithData.length) * 100}%` }} />
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: logsWithData.length > 0 ? `${(gratitudeDays / logsWithData.length) * 100}%` : '0%' }} />
               </div>
             </div>
           </div>
@@ -1697,30 +1797,37 @@ function CrisisView({ data, setData, setCurrentView }) {
           </div>
         )}
 
-        {data.copingKit.contacts.map((contact, idx) => (
-          <div key={idx} className="flex items-center justify-between bg-black/30 rounded-lg p-3">
-            <div>
-              <div className="font-medium">{contact.name}</div>
-              <a href={`tel:${contact.phone}`} className="text-sm text-blue-400 hover:text-blue-300">
-                {contact.phone}
-              </a>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={`tel:${contact.phone}`}
-                className="bg-green-600 hover:bg-green-700 p-2 rounded-full transition-all"
-              >
-                <Icons.Phone className="w-4 h-4" />
-              </a>
-              <button
-                onClick={() => deleteContact(idx)}
-                className="text-red-400 hover:text-red-300 text-xs"
-              >
-                ×
-              </button>
-            </div>
+{data.copingKit.contacts.length === 0 ? (
+          <div className="text-center py-8 px-4 bg-black/30 rounded-lg">
+            <Icons.Phone className="w-8 h-8 mx-auto mb-2 text-gray-500" />
+            <p className="text-gray-400 text-xs">No emergency contacts added.</p>
           </div>
-        ))}
+        ) : (
+          data.copingKit.contacts.map((contact, idx) => (
+            <div key={idx} className="flex items-center justify-between bg-black/30 rounded-lg p-3">
+              <div>
+                <div className="font-medium">{contact.name}</div>
+                <a href={`tel:${contact.phone}`} className="text-sm text-blue-400 hover:text-blue-300">
+                  {contact.phone}
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="bg-green-600 hover:bg-green-700 p-2 rounded-full transition-all"
+                >
+                  <Icons.Phone className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={() => deleteContact(idx)}
+                  className="text-red-400 hover:text-red-300 text-xs"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Affirmations */}

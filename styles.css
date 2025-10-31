@@ -172,6 +172,19 @@ html {
   animation: wave 1s ease-in-out infinite;
 }
 
+@keyframes recording-bar {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.recording-bar {
+  animation: recording-bar 0.6s ease-in-out infinite;
+}
+
 /* Haptic Feedback Style */
 @media (hover: none) and (pointer: coarse) {
   button:active {
