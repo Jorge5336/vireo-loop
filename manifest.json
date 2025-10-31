@@ -1,7 +1,7 @@
 {
   "name": "Vireo Loop",
   "short_name": "Vireo",
-  "description": "Your soft reset button for focus and sobriety",
+  "description": "Your soft reset button for wellness and focus",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f172a",
