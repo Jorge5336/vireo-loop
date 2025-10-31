@@ -1,0 +1,61 @@
+# ⚡ Quick Deploy Checklist
+
+## 3-Minute GitHub Pages Setup
+
+### ✅ Step 1: Create Repo
+- Go to github.com
+- Click "New Repository"
+- Name it (e.g., `vireo-loop`)
+- Make it **Public**
+- Click "Create repository"
+
+### ✅ Step 2: Upload Files
+- Click "uploading an existing file"
+- Drag these 4 files:
+  - `index.html`
+  - `app.js`
+  - `icons.js`
+  - `styles.css`
+- Click "Commit changes"
+
+### ✅ Step 3: Enable Pages
+- Go to Settings → Pages
+- Select "main" branch
+- Click Save
+- Wait 2 minutes
+
+### ✅ Step 4: Visit Your Site
+- URL: `https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/`
+- Bookmark it!
+- Add to home screen on mobile
+
+---
+
+## 🎉 Done!
+
+Your Vireo Loop is now live. No build process. No npm. Just working code.
+
+**Next steps:**
+- Set your sobriety start date
+- Log today's mood
+- Try a focus timer
+
+---
+
+## 🔧 Quick Edits
+
+**Want to change something?**
+1. Click the file on GitHub
+2. Click the pencil icon (Edit)
+3. Make your changes
+4. Scroll down → "Commit changes"
+5. Your site updates automatically!
+
+**Common edits:**
+- Colors: Edit `app.js` line 50
+- Timer durations: Edit `app.js` line 233
+- Better strategies: Edit `app.js` lines 32-38
+
+---
+
+**Need help?** Just open an issue on GitHub or fork and experiment! 🐦
