@@ -1,10 +1,10 @@
-// Vireo Loop V10 - Wellness & Focus Tracker
+// Vireo Loop V11 - Wellness & Focus Tracker
 const { useState, useEffect, useRef } = React;
 
 // Utility: Get today's date key
 const getTodayKey = () => new Date().toISOString().split('T')[0];
 
-// Utility: Calculate sober streak
+// Utility: Calculate streak (for any date-based tracking)
 const calculateStreak = (startDate) => {
   if (!startDate) return 0;
   const start = new Date(startDate);
@@ -17,21 +17,62 @@ const calculateStreak = (startDate) => {
 // Initial state structure
 const getInitialData = () => {
   const stored = localStorage.getItem('vireoLoop');
-  if (stored) return JSON.parse(stored);
-  
+  if (stored) {
+    const data = JSON.parse(stored);
+    // Migrate old data structure to V11
+    return {
+      ...data,
+      theme: data.theme || 'dark',
+      themeColor: data.themeColor || 'purple',
+      sobrietyTracking: data.sobrietyTracking !== undefined ? data.sobrietyTracking : (data.sobrietyStartDate ? true : false),
+      anchorMoments: data.anchorMoments || [],
+      connections: data.connections || [],
+      betterStrategies: data.betterStrategies || [
+        "Call someone who cares",
+        "Take a walk, even just 5 minutes",
+        "Write down what I'm feeling",
+        "Listen to music that moves me",
+        "Look at photos that ground me"
+      ],
+      copingKit: data.copingKit || {
+        contacts: [],
+        strategies: [],
+        affirmations: [
+          "This feeling will pass",
+          "I've overcome harder moments",
+          "I'm exactly where I need to be"
+        ]
+      }
+    };
+  }
+
   return {
+    theme: 'dark',
+    themeColor: 'purple',
     sobrietyStartDate: null,
+    sobrietyTracking: false,
     dailyLogs: {},
     timerSessions: [],
     urgeSurfLogs: [],
     musicEntries: [],
+    anchorMoments: [],
+    connections: [],
     betterStrategies: [
-      "Call someone who understands",
+      "Call someone who cares",
       "Take a walk, even just 5 minutes",
       "Write down what I'm feeling",
       "Listen to music that moves me",
-      "Remember why I started this journey"
-    ]
+      "Look at photos that ground me"
+    ],
+    copingKit: {
+      contacts: [],
+      strategies: [],
+      affirmations: [
+        "This feeling will pass",
+        "I've overcome harder moments",
+        "I'm exactly where I need to be"
+      ]
+    }
   };
 };
 
@@ -65,6 +106,8 @@ function VireoLoop() {
       feltTempted: false,
       gotOutside: false,
       movedBody: false,
+      gratitude: '',
+      smallWin: '',
       notes: ''
     };
   });
@@ -96,30 +139,45 @@ function VireoLoop() {
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <Icons.Leaf className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-400 animate-pulse" />
             <h1 className="text-2xl sm:text-4xl font-light tracking-wide">Vireo Loop</h1>
-            <span className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">V10</span>
+            <span className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">V11</span>
           </div>
           <p className="text-purple-300 text-xs sm:text-sm italic">your soft reset button</p>
+
+          {/* Theme & Settings Toggle */}
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <button
+              onClick={() => setData(prev => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }))}
+              className="p-2 rounded-full hover:bg-white/10 transition-all"
+              title="Toggle theme"
+            >
+              {data.theme === 'dark' ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </header>
 
         {/* Navigation */}
-        <nav className="flex flex-col sm:flex-row gap-1 sm:gap-2 mb-4 sm:mb-6 bg-black/20 backdrop-blur-sm rounded-2xl sm:rounded-full p-2">
+        <nav className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1 sm:gap-2 mb-4 sm:mb-6 bg-black/20 backdrop-blur-sm rounded-2xl p-2">
           {[
             { id: 'loop', icon: Icons.TrendingUp, label: 'Loop' },
             { id: 'focus', icon: Icons.Timer, label: 'Focus' },
-            { id: 'urge', icon: Icons.Wind, label: 'Urge Surf' },
-            { id: 'music', icon: Icons.Music, label: 'Music' }
+            { id: 'anchor', icon: Icons.Anchor, label: 'Anchor' },
+            { id: 'connections', icon: Icons.Users, label: 'People' },
+            { id: 'urge', icon: Icons.Wind, label: 'Cope' },
+            { id: 'music', icon: Icons.Music, label: 'Music' },
+            { id: 'insights', icon: Icons.BarChart, label: 'Insights' },
+            { id: 'crisis', icon: Icons.Zap, label: 'SOS' }
           ].map(nav => (
             <button
               key={nav.id}
               onClick={() => setCurrentView(nav.id)}
-              className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-full transition-all flex-1 ${
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 rounded-xl transition-all ${
                 currentView === nav.id
                   ? 'bg-purple-600 shadow-lg shadow-purple-500/50'
                   : 'hover:bg-white/10'
               }`}
             >
               <nav.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm">{nav.label}</span>
+              <span className="text-xs">{nav.label}</span>
             </button>
           ))}
         </nav>
@@ -128,8 +186,12 @@ function VireoLoop() {
         <main className="bg-black/30 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl border border-white/10">
           {currentView === 'loop' && <DailyLoopView data={data} setData={setData} todayLog={todayLog} setTodayLog={setTodayLog} streak={streak} />}
           {currentView === 'focus' && <FocusView data={data} setData={setData} />}
+          {currentView === 'anchor' && <AnchorMomentsView data={data} setData={setData} />}
+          {currentView === 'connections' && <ConnectionsView data={data} setData={setData} />}
           {currentView === 'urge' && <UrgeSurfView data={data} setData={setData} />}
           {currentView === 'music' && <MusicView data={data} setData={setData} />}
+          {currentView === 'insights' && <InsightsView data={data} />}
+          {currentView === 'crisis' && <CrisisView data={data} setData={setData} setCurrentView={setCurrentView} />}
         </main>
       </div>
     </div>
@@ -167,21 +229,40 @@ function DailyLoopView({ data, setData, todayLog, setTodayLog, streak }) {
 
   return (
     <div className="space-y-3 sm:space-y-6">
-      {/* Sober Streak */}
-      <div className="text-center py-4 sm:py-6 bg-gradient-to-r from-purple-500/20 to-teal-500/20 rounded-xl sm:rounded-2xl border border-purple-400/30">
-        <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-          {[...Array(Math.min(streak, 5))].map((_, i) => (
-            <Icons.Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
-          ))}
-        </div>
-        <div className="text-4xl sm:text-5xl font-light mb-1">{streak}</div>
-        <div className="text-xs sm:text-sm text-purple-300">days of clarity</div>
-        {!data.sobrietyStartDate && (
-          <button onClick={setStartDate} className="mt-2 sm:mt-3 text-xs text-purple-400 hover:text-purple-300 underline">
-            Set start date
+      {/* Optional Streak Tracking */}
+      {data.sobrietyTracking && (
+        <div className="text-center py-4 sm:py-6 bg-gradient-to-r from-purple-500/20 to-teal-500/20 rounded-xl sm:rounded-2xl border border-purple-400/30">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+            {[...Array(Math.min(streak, 5))].map((_, i) => (
+              <Icons.Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+            ))}
+          </div>
+          <div className="text-4xl sm:text-5xl font-light mb-1">{streak}</div>
+          <div className="text-xs sm:text-sm text-purple-300">days of clarity</div>
+          {!data.sobrietyStartDate && (
+            <button onClick={setStartDate} className="mt-2 sm:mt-3 text-xs text-purple-400 hover:text-purple-300 underline">
+              Set start date
+            </button>
+          )}
+          <button
+            onClick={() => setData(prev => ({ ...prev, sobrietyTracking: false }))}
+            className="mt-2 sm:mt-3 text-xs text-gray-500 hover:text-gray-400 block mx-auto"
+          >
+            Hide tracking
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {!data.sobrietyTracking && (
+        <div className="text-center py-3 bg-white/5 rounded-xl">
+          <button
+            onClick={() => setData(prev => ({ ...prev, sobrietyTracking: true }))}
+            className="text-xs text-purple-400 hover:text-purple-300 underline"
+          >
+            + Enable streak tracking
+          </button>
+        </div>
+      )}
 
       {/* Today's Check-in */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -260,6 +341,35 @@ function DailyLoopView({ data, setData, todayLog, setTodayLog, streak }) {
             <span className="text-xs sm:text-sm">{item.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Gratitude & Small Wins */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-amber-500/20">
+          <label className="text-xs sm:text-sm text-amber-300 mb-2 block flex items-center gap-2">
+            <Icons.Gift className="w-4 h-4" />
+            Gratitude
+          </label>
+          <textarea
+            value={todayLog.gratitude}
+            onChange={(e) => updateLog('gratitude', e.target.value)}
+            className="w-full bg-black/30 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px] resize-none"
+            placeholder="What are you grateful for today?"
+          />
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-emerald-500/20">
+          <label className="text-xs sm:text-sm text-emerald-300 mb-2 block flex items-center gap-2">
+            <Icons.Star className="w-4 h-4" />
+            Small Win
+          </label>
+          <textarea
+            value={todayLog.smallWin}
+            onChange={(e) => updateLog('smallWin', e.target.value)}
+            className="w-full bg-black/30 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[60px] resize-none"
+            placeholder="What's one thing you accomplished?"
+          />
+        </div>
       </div>
 
       {/* Notes */}
@@ -495,18 +605,22 @@ function FocusView({ data, setData }) {
   );
 }
 
-// Urge Surf Component
+// Enhanced Urge Surf Component
 function UrgeSurfView({ data, setData }) {
   const [step, setStep] = useState(0);
   const [feeling, setFeeling] = useState('');
+  const [intensity, setIntensity] = useState(5);
   const [selectedStrategy, setSelectedStrategy] = useState('');
   const [breathCount, setBreathCount] = useState(0);
+  const [postReflection, setPostReflection] = useState('');
+  const [postIntensity, setPostIntensity] = useState(5);
 
   const steps = [
+    { title: "Rate the Intensity", subtitle: "How strong is this feeling?" },
     { title: "Name What You're Feeling", subtitle: "No judgment. Just truth." },
     { title: "Breathe", subtitle: "Three deep breaths. You have time." },
     { title: "Recall a Better Strategy", subtitle: "What helps you instead?" },
-    { title: "You Surfed the Urge", subtitle: "That's courage." }
+    { title: "How Do You Feel Now?", subtitle: "Notice any shifts." }
   ];
 
   const currentStep = steps[step];
@@ -516,15 +630,21 @@ function UrgeSurfView({ data, setData }) {
       ...prev,
       urgeSurfLogs: [...prev.urgeSurfLogs, {
         feeling,
+        intensity,
         strategy: selectedStrategy,
+        postReflection,
+        postIntensity,
         timestamp: new Date().toISOString()
       }]
     }));
     // Reset
     setStep(0);
     setFeeling('');
+    setIntensity(5);
     setSelectedStrategy('');
     setBreathCount(0);
+    setPostReflection('');
+    setPostIntensity(5);
   };
 
   return (
@@ -548,8 +668,27 @@ function UrgeSurfView({ data, setData }) {
       </div>
 
       <div className="bg-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-        {/* Step 0: Name Feeling */}
+        {/* Step 0: Intensity */}
         {step === 0 && (
+          <div className="space-y-4">
+            <div className="text-center text-5xl sm:text-6xl font-light text-teal-400">{intensity}</div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={intensity}
+              onChange={(e) => setIntensity(parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-teal-500"
+            />
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>Mild</span>
+              <span>Overwhelming</span>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Name Feeling */}
+        {step === 1 && (
           <textarea
             value={feeling}
             onChange={(e) => setFeeling(e.target.value)}
@@ -559,8 +698,8 @@ function UrgeSurfView({ data, setData }) {
           />
         )}
 
-        {/* Step 1: Breathe */}
-        {step === 1 && (
+        {/* Step 2: Breathe */}
+        {step === 2 && (
           <div className="text-center space-y-4 sm:space-y-6">
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 mx-auto">
               <div className="absolute inset-0 bg-teal-500/20 rounded-full animate-ping-slow"></div>
@@ -571,7 +710,7 @@ function UrgeSurfView({ data, setData }) {
             <button
               onClick={() => {
                 if (breathCount < 3) setBreathCount(breathCount + 1);
-                if (breathCount === 2) setTimeout(() => setStep(2), 500);
+                if (breathCount === 2) setTimeout(() => setStep(3), 500);
               }}
               className="bg-teal-600 hover:bg-teal-700 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
             >
@@ -580,8 +719,8 @@ function UrgeSurfView({ data, setData }) {
           </div>
         )}
 
-        {/* Step 2: Strategy */}
-        {step === 2 && (
+        {/* Step 3: Strategy */}
+        {step === 3 && (
           <div className="space-y-2 sm:space-y-3">
             {data.betterStrategies.map((strategy, idx) => (
               <button
@@ -614,22 +753,53 @@ function UrgeSurfView({ data, setData }) {
           </div>
         )}
 
-        {/* Step 3: Completion */}
-        {step === 3 && (
-          <div className="text-center space-y-4 sm:space-y-6">
-            <div className="text-5xl sm:text-6xl">🌊</div>
-            <p className="text-base sm:text-lg text-purple-300">
-              You named it. You breathed. You chose differently.
-            </p>
-            <div className="bg-white/5 rounded-lg p-3 sm:p-4 text-left space-y-2">
-              <div className="text-xs sm:text-sm text-gray-400">You felt:</div>
-              <div className="text-sm sm:text-base text-white">{feeling}</div>
-              <div className="text-xs sm:text-sm text-gray-400 mt-3">You chose:</div>
-              <div className="text-sm sm:text-base text-white">{selectedStrategy}</div>
+        {/* Step 4: Post-Reflection */}
+        {step === 4 && (
+          <div className="space-y-4 sm:space-y-6">
+            <div className="text-center text-5xl sm:text-6xl">🌊</div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs sm:text-sm text-purple-300 mb-2 block">How intense is the feeling now?</label>
+                <div className="text-center text-4xl sm:text-5xl font-light text-teal-400 mb-2">{postIntensity}</div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={postIntensity}
+                  onChange={(e) => setPostIntensity(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                />
+                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>Mild</span>
+                  <span>Overwhelming</span>
+                </div>
+                {postIntensity < intensity && (
+                  <p className="text-center text-xs text-emerald-400 mt-2">✓ The intensity has decreased</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs sm:text-sm text-purple-300 mb-2 block">What do you notice?</label>
+                <textarea
+                  value={postReflection}
+                  onChange={(e) => setPostReflection(e.target.value)}
+                  className="w-full bg-black/30 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[80px] resize-none"
+                  placeholder="Any shifts in how you're feeling?"
+                />
+              </div>
             </div>
+
+            <div className="bg-white/5 rounded-lg p-3 sm:p-4 text-left space-y-2 text-xs sm:text-sm">
+              <div className="text-gray-400">Started at:</div>
+              <div className="text-white">Intensity {intensity} - {feeling}</div>
+              <div className="text-gray-400 mt-3">Chose:</div>
+              <div className="text-white">{selectedStrategy}</div>
+            </div>
+
             <button
               onClick={completeSession}
-              className="bg-emerald-600 hover:bg-emerald-700 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 px-6 py-3 text-sm sm:text-base rounded-full transition-all"
             >
               Complete & Log
             </button>
@@ -638,7 +808,7 @@ function UrgeSurfView({ data, setData }) {
       </div>
 
       {/* Navigation */}
-      {step > 0 && step < 3 && (
+      {step > 0 && step < 4 && (
         <div className="flex gap-3 sm:gap-4">
           <button
             onClick={() => setStep(step - 1)}
@@ -646,9 +816,17 @@ function UrgeSurfView({ data, setData }) {
           >
             Back
           </button>
-          {step === 2 && selectedStrategy && (
+          {step === 1 && feeling && (
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
+              className="flex-1 bg-teal-600 hover:bg-teal-700 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
+            >
+              Continue
+            </button>
+          )}
+          {step === 3 && selectedStrategy && (
+            <button
+              onClick={() => setStep(4)}
               className="flex-1 bg-teal-600 hover:bg-teal-700 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
             >
               Continue
@@ -659,9 +837,8 @@ function UrgeSurfView({ data, setData }) {
 
       {step === 0 && (
         <button
-          onClick={() => feeling && setStep(1)}
-          disabled={!feeling}
-          className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
+          onClick={() => setStep(1)}
+          className="w-full bg-teal-600 hover:bg-teal-700 py-2 sm:py-3 text-sm sm:text-base rounded-full transition-all"
         >
           Begin
         </button>
@@ -1015,6 +1192,560 @@ function MusicView({ data, setData }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Anchor Moments Component (Photo/Voice Journal)
+function AnchorMomentsView({ data, setData }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newMoment, setNewMoment] = useState({ title: '', note: '', photo: null });
+  const fileInputRef = useRef(null);
+
+  const addMoment = () => {
+    if (newMoment.title || newMoment.note || newMoment.photo) {
+      setData(prev => ({
+        ...prev,
+        anchorMoments: [...prev.anchorMoments, {
+          ...newMoment,
+          timestamp: new Date().toISOString()
+        }]
+      }));
+      setNewMoment({ title: '', note: '', photo: null });
+      setShowAdd(false);
+    }
+  };
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewMoment(prev => ({ ...prev, photo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const deleteMoment = (index) => {
+    setData(prev => ({
+      ...prev,
+      anchorMoments: prev.anchorMoments.filter((_, i) => i !== index)
+    }));
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center mb-4">
+        <h2 className="text-xl sm:text-2xl font-light mb-2">Anchor Moments</h2>
+        <p className="text-purple-300 text-xs sm:text-sm italic">Moments that ground you</p>
+      </div>
+
+      {!showAdd ? (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+        >
+          <Icons.Camera className="w-5 h-5" />
+          <span>Add Anchor Moment</span>
+        </button>
+      ) : (
+        <div className="bg-white/5 rounded-xl p-4 space-y-4">
+          <input
+            type="text"
+            value={newMoment.title}
+            onChange={(e) => setNewMoment(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full bg-black/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Title (optional)"
+          />
+
+          <textarea
+            value={newMoment.note}
+            onChange={(e) => setNewMoment(prev => ({ ...prev, note: e.target.value }))}
+            className="w-full bg-black/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] resize-none"
+            placeholder="What makes this moment grounding?"
+          />
+
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <Icons.Image className="w-4 h-4" />
+              <span className="text-sm">{newMoment.photo ? 'Change Photo' : 'Add Photo'}</span>
+            </button>
+            {newMoment.photo && (
+              <img src={newMoment.photo} alt="Preview" className="mt-3 rounded-lg w-full max-h-48 object-cover" />
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowAdd(false); setNewMoment({ title: '', note: '', photo: null }); }}
+              className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addMoment}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-all"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Display Moments */}
+      <div className="space-y-3">
+        {data.anchorMoments.slice().reverse().map((moment, idx) => (
+          <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-3">
+            {moment.photo && (
+              <img src={moment.photo} alt="Anchor moment" className="rounded-lg w-full max-h-64 object-cover" />
+            )}
+            {moment.title && <h3 className="font-medium text-lg">{moment.title}</h3>}
+            {moment.note && <p className="text-sm text-gray-300">{moment.note}</p>}
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>{new Date(moment.timestamp).toLocaleDateString()}</span>
+              <button
+                onClick={() => deleteMoment(data.anchorMoments.length - 1 - idx)}
+                className="text-red-400 hover:text-red-300"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Connections Component
+function ConnectionsView({ data, setData }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newConnection, setNewConnection] = useState({ name: '', phone: '', note: '' });
+
+  const addConnection = () => {
+    if (newConnection.name) {
+      setData(prev => ({
+        ...prev,
+        connections: [...prev.connections, {
+          ...newConnection,
+          lastContact: null,
+          addedAt: new Date().toISOString()
+        }]
+      }));
+      setNewConnection({ name: '', phone: '', note: '' });
+      setShowAdd(false);
+    }
+  };
+
+  const markContacted = (index) => {
+    setData(prev => ({
+      ...prev,
+      connections: prev.connections.map((conn, i) =>
+        i === index ? { ...conn, lastContact: new Date().toISOString() } : conn
+      )
+    }));
+  };
+
+  const deleteConnection = (index) => {
+    setData(prev => ({
+      ...prev,
+      connections: prev.connections.filter((_, i) => i !== index)
+    }));
+  };
+
+  const daysSinceContact = (lastContact) => {
+    if (!lastContact) return null;
+    const days = Math.floor((Date.now() - new Date(lastContact)) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center mb-4">
+        <h2 className="text-xl sm:text-2xl font-light mb-2">People Who Matter</h2>
+        <p className="text-purple-300 text-xs sm:text-sm italic">Stay connected</p>
+      </div>
+
+      {!showAdd ? (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="w-full bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+        >
+          <Icons.Users className="w-5 h-5" />
+          <span>Add Person</span>
+        </button>
+      ) : (
+        <div className="bg-white/5 rounded-xl p-4 space-y-4">
+          <input
+            type="text"
+            value={newConnection.name}
+            onChange={(e) => setNewConnection(prev => ({ ...prev, name: e.target.value }))}
+            className="w-full bg-black/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Name"
+          />
+
+          <input
+            type="tel"
+            value={newConnection.phone}
+            onChange={(e) => setNewConnection(prev => ({ ...prev, phone: e.target.value }))}
+            className="w-full bg-black/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Phone (optional)"
+          />
+
+          <textarea
+            value={newConnection.note}
+            onChange={(e) => setNewConnection(prev => ({ ...prev, note: e.target.value }))}
+            className="w-full bg-black/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px] resize-none"
+            placeholder="Why they matter (optional)"
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowAdd(false); setNewConnection({ name: '', phone: '', note: '' }); }}
+              className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addConnection}
+              disabled={!newConnection.name}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 py-2 rounded-lg transition-all"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Display Connections */}
+      <div className="space-y-3">
+        {data.connections.map((person, idx) => {
+          const days = daysSinceContact(person.lastContact);
+          return (
+            <div key={idx} className="bg-white/5 rounded-xl p-4 space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-medium text-lg">{person.name}</h3>
+                  {person.phone && (
+                    <a href={`tel:${person.phone}`} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                      <Icons.Phone className="w-3 h-3" />
+                      {person.phone}
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={() => deleteConnection(idx)}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Remove
+                </button>
+              </div>
+
+              {person.note && <p className="text-sm text-gray-300">{person.note}</p>}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => markContacted(idx)}
+                  className="flex-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 py-2 rounded-lg text-xs transition-all"
+                >
+                  Mark as Contacted
+                </button>
+                {days !== null && (
+                  <span className="text-xs text-gray-400">
+                    {days === 0 ? 'Today' : `${days}d ago`}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Insights View
+function InsightsView({ data }) {
+  const getLast30Days = () => {
+    const logs = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = date.toISOString().split('T')[0];
+      logs.push(data.dailyLogs[key] || null);
+    }
+    return logs;
+  };
+
+  const last30Days = getLast30Days();
+  const logsWithData = last30Days.filter(log => log && log.mood);
+
+  // Calculate averages
+  const avgSleep = logsWithData.filter(l => l.sleep).reduce((sum, l) => sum + l.sleep, 0) / logsWithData.filter(l => l.sleep).length || 0;
+  const moodCounts = logsWithData.reduce((acc, log) => {
+    acc[log.mood] = (acc[log.mood] || 0) + 1;
+    return acc;
+  }, {});
+  const mostCommonMood = Object.keys(moodCounts).sort((a, b) => moodCounts[b] - moodCounts[a])[0];
+
+  const outsideDays = logsWithData.filter(l => l.gotOutside).length;
+  const exerciseDays = logsWithData.filter(l => l.movedBody).length;
+  const gratitudeDays = logsWithData.filter(l => l.gratitude).length;
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center mb-4">
+        <h2 className="text-xl sm:text-2xl font-light mb-2">Your Patterns</h2>
+        <p className="text-purple-300 text-xs sm:text-sm italic">Gentle observations from the last 30 days</p>
+      </div>
+
+      {logsWithData.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          <p>Start logging daily to see patterns emerge</p>
+        </div>
+      ) : (
+        <>
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl p-4 border border-purple-500/30 text-center">
+              <div className="text-3xl font-light mb-1">{logsWithData.length}</div>
+              <div className="text-xs text-gray-300">days logged</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-500/20 to-teal-500/20 rounded-xl p-4 border border-blue-500/30 text-center">
+              <div className="text-3xl font-light mb-1">{avgSleep.toFixed(1)}</div>
+              <div className="text-xs text-gray-300">avg sleep (hrs)</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-teal-500/20 to-emerald-500/20 rounded-xl p-4 border border-teal-500/30 text-center col-span-2 sm:col-span-1">
+              <div className="text-3xl mb-1">{moodEmojis[mostCommonMood] || '·'}</div>
+              <div className="text-xs text-gray-300">common mood</div>
+            </div>
+          </div>
+
+          {/* Activities */}
+          <div className="bg-white/5 rounded-xl p-4 space-y-3">
+            <h3 className="text-sm font-medium text-purple-300 mb-3">Activities</h3>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Got outside</span>
+                <span className="text-emerald-400">{outsideDays} days</span>
+              </div>
+              <div className="w-full bg-black/30 rounded-full h-2">
+                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${(outsideDays / logsWithData.length) * 100}%` }} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Moved body</span>
+                <span className="text-blue-400">{exerciseDays} days</span>
+              </div>
+              <div className="w-full bg-black/30 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(exerciseDays / logsWithData.length) * 100}%` }} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Practiced gratitude</span>
+                <span className="text-amber-400">{gratitudeDays} days</span>
+              </div>
+              <div className="w-full bg-black/30 rounded-full h-2">
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${(gratitudeDays / logsWithData.length) * 100}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Focus Sessions */}
+          {data.timerSessions.length > 0 && (
+            <div className="bg-white/5 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-purple-300 mb-3">Focus Stats</h3>
+              <div className="text-center">
+                <div className="text-3xl font-light mb-1">{data.timerSessions.length}</div>
+                <div className="text-xs text-gray-300">total sessions</div>
+              </div>
+            </div>
+          )}
+
+          {/* Urge Surfing */}
+          {data.urgeSurfLogs.length > 0 && (
+            <div className="bg-white/5 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-purple-300 mb-3">Coping Moments</h3>
+              <div className="text-center">
+                <div className="text-3xl font-light mb-1">{data.urgeSurfLogs.length}</div>
+                <div className="text-xs text-gray-300">times you surfed the wave</div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Crisis Mode Component
+function CrisisView({ data, setData, setCurrentView }) {
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', phone: '' });
+
+  const addContact = () => {
+    if (newContact.name && newContact.phone) {
+      setData(prev => ({
+        ...prev,
+        copingKit: {
+          ...prev.copingKit,
+          contacts: [...prev.copingKit.contacts, newContact]
+        }
+      }));
+      setNewContact({ name: '', phone: '' });
+      setShowAddContact(false);
+    }
+  };
+
+  const deleteContact = (index) => {
+    setData(prev => ({
+      ...prev,
+      copingKit: {
+        ...prev.copingKit,
+        contacts: prev.copingKit.contacts.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center mb-4">
+        <Icons.Zap className="w-12 h-12 mx-auto mb-2 text-yellow-400" />
+        <h2 className="text-xl sm:text-2xl font-light mb-2">Crisis Kit</h2>
+        <p className="text-purple-300 text-xs sm:text-sm italic">You're not alone. Help is here.</p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => setCurrentView('urge')}
+          className="bg-gradient-to-br from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 py-4 rounded-xl transition-all flex flex-col items-center justify-center gap-2"
+        >
+          <Icons.Wind className="w-6 h-6" />
+          <span className="text-sm">Urge Surf</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentView('anchor')}
+          className="bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-4 rounded-xl transition-all flex flex-col items-center justify-center gap-2"
+        >
+          <Icons.Anchor className="w-6 h-6" />
+          <span className="text-sm">Anchor Moments</span>
+        </button>
+      </div>
+
+      {/* Emergency Contacts */}
+      <div className="bg-white/5 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-purple-300">Emergency Contacts</h3>
+          <button
+            onClick={() => setShowAddContact(true)}
+            className="text-xs text-purple-400 hover:text-purple-300"
+          >
+            + Add
+          </button>
+        </div>
+
+        {showAddContact && (
+          <div className="bg-black/30 rounded-lg p-3 space-y-2">
+            <input
+              type="text"
+              value={newContact.name}
+              onChange={(e) => setNewContact(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full bg-black/30 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Name"
+            />
+            <input
+              type="tel"
+              value={newContact.phone}
+              onChange={(e) => setNewContact(prev => ({ ...prev, phone: e.target.value }))}
+              className="w-full bg-black/30 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Phone"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowAddContact(false); setNewContact({ name: '', phone: '' }); }}
+                className="flex-1 bg-white/10 hover:bg-white/20 py-1 rounded text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addContact}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 py-1 rounded text-xs"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+
+        {data.copingKit.contacts.map((contact, idx) => (
+          <div key={idx} className="flex items-center justify-between bg-black/30 rounded-lg p-3">
+            <div>
+              <div className="font-medium">{contact.name}</div>
+              <a href={`tel:${contact.phone}`} className="text-sm text-blue-400 hover:text-blue-300">
+                {contact.phone}
+              </a>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={`tel:${contact.phone}`}
+                className="bg-green-600 hover:bg-green-700 p-2 rounded-full transition-all"
+              >
+                <Icons.Phone className="w-4 h-4" />
+              </a>
+              <button
+                onClick={() => deleteContact(idx)}
+                className="text-red-400 hover:text-red-300 text-xs"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Affirmations */}
+      <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl p-4 border border-purple-500/30">
+        <h3 className="text-sm font-medium text-purple-300 mb-3">Remember</h3>
+        <div className="space-y-2">
+          {data.copingKit.affirmations.map((affirmation, idx) => (
+            <div key={idx} className="text-sm text-gray-200 italic">
+              "{affirmation}"
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Grounding */}
+      <div className="bg-white/5 rounded-xl p-4">
+        <h3 className="text-sm font-medium text-purple-300 mb-3">60-Second Grounding</h3>
+        <ol className="space-y-2 text-sm text-gray-300">
+          <li>1. Name 5 things you can see</li>
+          <li>2. Name 4 things you can touch</li>
+          <li>3. Name 3 things you can hear</li>
+          <li>4. Name 2 things you can smell</li>
+          <li>5. Name 1 thing you can taste</li>
+        </ol>
+      </div>
     </div>
   );
 }
